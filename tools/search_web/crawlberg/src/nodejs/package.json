@@ -1,0 +1,8 @@
+{
+  "name": "@leon-ai/crawlberg-tool",
+  "private": false,
+  "type": "module",
+  "dependencies": {
+    "@xberg-io/xberg": "1.3.10"
+  }
+}
