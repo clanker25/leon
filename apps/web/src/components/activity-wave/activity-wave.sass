@@ -1,0 +1,64 @@
+$activity-wave-travel-fraction: .9
+
+.activity-wave
+  --activity-wave-highlight-width: 96px
+  --activity-wave-highlight-start: 35%
+  --activity-wave-highlight-end: 65%
+  --activity-wave-travel-fraction: #{$activity-wave-travel-fraction}
+  --activity-wave-duration: 5s
+  position: relative
+
+.activity-wave-content
+  // Preserve the original flex children and native text selection.
+  display: contents
+
+.activity-wave.activity-wave-active
+  color: var(--color-text-secondary)
+
+.activity-wave-band
+  position: absolute
+  top: 0
+  left: 0
+  width: var(--activity-wave-highlight-width)
+  height: 100%
+  overflow: hidden
+  pointer-events: none
+  user-select: none
+  mask-image: linear-gradient(90deg, transparent, #000 var(--activity-wave-highlight-start), #000 var(--activity-wave-highlight-end), transparent)
+  animation: activity-wave var(--activity-wave-duration) linear infinite
+  will-change: transform
+
+.activity-wave .activity-wave-copy
+  position: absolute
+  top: 0
+  left: 0
+  width: var(--activity-wave-width)
+  height: 100%
+  color: var(--activity-wave-highlight-color)
+  animation: activity-wave-content var(--activity-wave-duration) linear infinite
+  will-change: transform
+
+  // Local icon colors must follow the copied text's highlight paint.
+  svg, .app-icon-mask
+    color: inherit
+
+.activity-wave-text::before
+  content: attr(data-activity-wave-text)
+
+@keyframes activity-wave
+  0%
+    transform: translateX(calc(0px - var(--activity-wave-highlight-width)))
+
+  #{$activity-wave-travel-fraction * 100%}, 100%
+    transform: translateX(var(--activity-wave-width))
+
+@keyframes activity-wave-content
+  0%
+    transform: translateX(var(--activity-wave-highlight-width))
+
+  #{$activity-wave-travel-fraction * 100%}, 100%
+    transform: translateX(calc(0px - var(--activity-wave-width)))
+
+@media (prefers-reduced-motion: reduce)
+  .activity-wave-band
+    display: none
